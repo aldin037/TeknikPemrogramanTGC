@@ -1,0 +1,103 @@
+# Versi sederhana: pengolahan data Two-Way Travel Time (TWT)
+# ============================================================
+# Tanpa menggunakan pandas/numpy — hanya modul csv bawaan Python.
+
+import csv
+
+# ============================================================
+# STEP 1: Simulasi data (bisa diganti dengan pembacaan dari file txt)
+# ============================================================
+data = [
+    ['shot', 'receiver', 'twt'],  # Header
+    [0, 100, 200],
+    [0, 200, 350],
+    [0, 300, 480],
+    [0, 400, 600]
+]
+
+print("=== Data Awal ===")
+for row in data:
+    print(row)
+print("\n")
+
+# ============================================================
+# STEP 2: Normalisasi nilai TWT dengan error handling
+# ============================================================
+normalized_data = None
+
+try:
+    # --- Validasi header ---
+    if len(data) < 1 or len(data[0]) < 3 or data[0][2] != 'twt':
+        raise ValueError("Kolom 'twt' tidak ditemukan pada data!")
+
+    # --- Ambil nilai twt (skip header) dan validasi ---
+    twt_values = []
+    for i, row in enumerate(data[1:], start=2):  # Mulai dari baris 2 (karena header = baris 1)
+        try:
+            twt = float(row[2])
+            twt_values.append(twt)
+        except (ValueError, TypeError, IndexError):
+            raise ValueError(f"Nilai 'twt' tidak valid pada baris {i}: {row}")
+
+    if not twt_values:
+        raise ValueError("Tidak ada data TWT valid untuk dinormalisasi.")
+
+    # --- Hitung nilai min dan batas atas 600 ---
+    twt_min = min(twt_values)
+    twt_max = 600
+    twt_max_data = max(twt_values)
+
+    if twt_max_data > twt_max:
+        print(f"Peringatan: nilai TWT maksimum data ({twt_max_data}) > 600. "
+              f"Menggunakan 600 sebagai batas normalisasi.")
+
+    denominator = twt_max - twt_min
+    if denominator == 0:
+        raise ValueError("Denominator nol (twt_max == twt_min), normalisasi tidak dapat dilakukan!")
+
+    # --- Tambahkan kolom baru "twt_norm" ---
+    header = data[0] + ['twt_norm']
+    normalized_data = [header]
+
+    for row in data[1:]:  # skip header
+        twt = float(row[2])
+        twt_norm = (twt - twt_min) / denominator
+        new_row = row + [round(twt_norm, 3)]
+        normalized_data.append(new_row)
+
+    # --- Tampilkan hasil di terminal ---
+    print("=== Data Setelah Normalisasi ===")
+    for row in normalized_data:
+        print(','.join(map(str, row)))
+    print("\n")
+
+except ValueError as e:
+    print(f"Error pada proses normalisasi: {e}")
+    normalized_data = None
+except Exception as e:
+    print(f"Error tak terduga: {e}")
+    normalized_data = None
+
+# ============================================================
+# STEP 3: Simpan ke file ASCII (comma-separated)
+# ============================================================
+if normalized_data is not None:
+    output_file = 'data_seismik_normalized.csv'
+    try:
+        with open(output_file, 'w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerows(normalized_data)
+
+        print("=== Penyimpanan Berhasil ===")
+        print(f"File hasil: {output_file}\n")
+
+        # --- Preview isi file ---
+        with open(output_file, 'r', encoding='utf-8') as file:
+            print("--- Isi File Hasil ---")
+            print(file.read())
+            print("----------------------")
+
+    except IOError as e:
+        print(f"Error saat menyimpan file: {e}")
+else:
+    print("Penyimpanan dibatalkan karena error pada proses normalisasi.")
